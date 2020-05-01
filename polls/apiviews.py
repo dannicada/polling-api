@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
+from rest_framework.exceptions import PermissionDenied
 
 from .models import Poll, Choice
 from  .serializers import PollSerializer, ChoiceSerializer, VoteSerializer, UserSerializer
@@ -32,19 +33,24 @@ class PollViewSet(viewsets.ModelViewSet):
     queryset = Poll.objects.all()
     serializer_class = PollSerializer
 
-# class PollList(generics.ListCreateAPIView):
-#     queryset = Poll.objects.all()
-#     serializer_class = PollSerializer
+    def detroy(self, request, *args, **kwargs):
+        poll = Poll.objects.get(pk=self.kwargs["pk"])
+        if not request.user == poll.created_by:
+            raise PermissionDenied("You can not delete this poll")
+        return super().destroy(request, *args, **kwargs)
 
-# class PollDetail(generics.RetrieveDestroyAPIView):
-#     queryset = Poll.objects.all()
-#     serializer_class = PollSerializer
 
 class ChoiceList(generics.ListCreateAPIView):
     def get_queryset(self):
         queryset = Choice.objects.filter(poll_id=self.kwargs["pk"])
         return queryset
     serializer_class = ChoiceSerializer
+
+    def post(self, request, *args, **kwargs):
+        poll = Poll.objects.get(pk=self.kwargs["pk"])
+        if not request.user == poll.created_by:
+            raise PermissionDenied("You cannot create for this poll.")
+        return super().post(request, *args, **kwargs)
 
 class CreateVote(APIView):
     serializer_class = VoteSerializer
